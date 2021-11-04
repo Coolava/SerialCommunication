@@ -12,16 +12,14 @@ CompactSerial::~CompactSerial()
 {
 }
 
-bool CompactSerial::InitPort(size_t numPort, size_t baudrate, char parity, size_t databits, size_t stopbits, size_t nBufferSize)
+bool CompactSerial::InitPort(std::wstring portString, size_t baudrate, char parity, size_t databits, size_t stopbits)
 {
 	bool result = false;
 
-	numPort_ = numPort;
-
 	CString strport;
 	CString szBaud;
-	strport.Format(_T("\\\\.\\COM%d"), numPort);
-	szBaud.Format(_T("baud=%d parity=%c data=%d stop=%d"), baudrate, parity, databits, stopbits);
+	strport.Format(_T("\\\\.\\%s"), portString.c_str());
+	szBaud.Format(_T("baud=%lld parity=%c data=%lld stop=%lld"), baudrate, parity, databits, stopbits);
 
 	handle_comm_ = CreateFile(strport,		                // communication port string (COMX)				
 						GENERIC_READ | GENERIC_WRITE,	// read/write types
@@ -33,9 +31,9 @@ bool CompactSerial::InitPort(size_t numPort, size_t baudrate, char parity, size_
 
 	if (handle_comm_ != INVALID_HANDLE_VALUE)                // port not found
 	{
-		commtimeout_.ReadIntervalTimeout = 0xffffffff;
-		commtimeout_.ReadTotalTimeoutMultiplier = 0;
-		commtimeout_.ReadTotalTimeoutConstant = 0;
+		commtimeout_.ReadIntervalTimeout = 0;
+		commtimeout_.ReadTotalTimeoutMultiplier = 10;
+		commtimeout_.ReadTotalTimeoutConstant = 1;
 		commtimeout_.WriteTotalTimeoutMultiplier = 2 * baudrate;
 		commtimeout_.WriteTotalTimeoutConstant = 0;
 
@@ -73,6 +71,10 @@ void CompactSerial::ClosePort()
 {
 	if (handle_comm_ != INVALID_HANDLE_VALUE)
 	{
+		SetCommMask(handle_comm_, 0);
+
+		EscapeCommFunction(handle_comm_, CLRDTR);
+
 		PurgeComm(handle_comm_, PURGE_RXCLEAR | PURGE_TXCLEAR |
 			PURGE_RXABORT | PURGE_TXABORT);
 		CloseHandle(handle_comm_);
@@ -94,24 +96,47 @@ DWORD CompactSerial::Read(BYTE* buffer, size_t size_buffer)
 	DWORD comm_event = 0;
 	if (port_opened_)
 	{
-		result = WaitCommEvent(handle_comm_, &comm_event, &overlapped_);
+		/*result = WaitCommEvent(handle_comm_, &comm_event, &overlapped_);
 
+		auto dwError = GetLastError();
 		if (comm_event & EV_RXCHAR)
 		{
 			comm_event = NULL;
 
+
+
 			result = ClearCommError(handle_comm_, &error, &comstat);
 
-			if (result)
-			{
+			if (comstat.cbInQue > 0)
+			{*/
 
 				result = ReadFile(handle_comm_, // Handle to COMM port 
 					buffer,	      // RX Buffer Pointer
 					size_buffer,  // Read one byte(1:한개씩, 2:두개마다 한개씩)
 					&num_read,    // Stores number of bytes read
 					&overlapped_);  // pointer to the m_ov structure
-			}
-		}
+				ClearCommError(handle_comm_, &error, &comstat);
+		//		//--> 읽을 거리가 남았으면..
+		//		if (GetLastError() == ERROR_IO_PENDING)
+		//		{
+		//			//--------- timeouts에 정해준 시간만큼 기다려준다.
+		//			while (!GetOverlappedResult(handle_comm_, &overlapped_, &num_read, TRUE))
+		//			{
+		//				result = GetLastError();
+		//				if (result != ERROR_IO_INCOMPLETE)
+		//				{
+		//					ClearCommError(handle_comm_, &error, &comstat);
+		//					break;
+		//				}
+		//			}
+		//		}
+		//		else
+		//		{
+		//			result = 0;
+		//			ClearCommError(handle_comm_, &error, &comstat);
+		//		}
+		//	}
+		//}
 	}
 	return num_read;
 }

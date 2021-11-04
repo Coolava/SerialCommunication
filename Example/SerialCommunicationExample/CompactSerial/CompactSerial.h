@@ -1,28 +1,30 @@
 #pragma once
 #include <Windows.h>
 #include <atlstr.h>
+#include <string>
+#include <atomic>
 class CompactSerial
 {
 public:
 	CompactSerial();
 	virtual ~CompactSerial();
 
-	bool InitPort(	size_t	numPort,
+	bool InitPort(std::wstring portString,
 					size_t	baudrate,
 					char	parity,
 					size_t	databits,
-					size_t	stopbits,
-					size_t	nBufferSize);
+					size_t	stopbits);
 	void ClosePort();
 
 
 	DWORD Read(BYTE* buffer, size_t size_buffer);
 	DWORD Write(BYTE* buffer, size_t length);
 
+	bool isOpened() { return port_opened_; }
 
 private:
 
-	bool port_opened_ = false;
+	std::atomic_bool port_opened_ = false;
 	size_t numPort_ = 0;
 	HANDLE handle_comm_ = INVALID_HANDLE_VALUE;
 	COMMTIMEOUTS	commtimeout_ = COMMTIMEOUTS();

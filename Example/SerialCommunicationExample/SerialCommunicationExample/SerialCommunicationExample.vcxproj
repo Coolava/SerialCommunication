@@ -186,14 +186,22 @@
   <ItemGroup>
     <ClInclude Include="..\CompactSerial\CompactSerial.h" />
     <ClInclude Include="framework.h" />
+    <ClInclude Include="NoEscapeDialog.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="Resource.h" />
+    <ClInclude Include="SafeQueue.h" />
     <ClInclude Include="SerialCommunicationExample.h" />
     <ClInclude Include="SerialCommunicationExampleDlg.h" />
+    <ClInclude Include="SerialController.h" />
+    <ClInclude Include="SerialPort.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="ThreadController.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\CompactSerial\CompactSerial.cpp" />
+    <ClCompile Include="..\CompactSerial\CompactSerial.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="NoEscapeDialog.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
@@ -202,6 +210,11 @@
     </ClCompile>
     <ClCompile Include="SerialCommunicationExample.cpp" />
     <ClCompile Include="SerialCommunicationExampleDlg.cpp" />
+    <ClCompile Include="SerialController.cpp" />
+    <ClCompile Include="SerialPort.cpp" />
+    <ClCompile Include="ThreadController.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="SerialCommunicationExample.rc" />

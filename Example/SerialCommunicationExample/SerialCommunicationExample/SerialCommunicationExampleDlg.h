@@ -3,10 +3,12 @@
 //
 
 #pragma once
-
+#include "NoEscapeDialog.h"
+#include "ThreadController.h"
+#include "SerialController.h"
 
 // CSerialCommunicationExampleDlg dialog
-class CSerialCommunicationExampleDlg : public CDialogEx
+class CSerialCommunicationExampleDlg : public NoEscapeDialog
 {
 // Construction
 public:
@@ -30,4 +32,28 @@ protected:
 	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
+public:
+	afx_msg void OnBnClickedButton1();
+
+private:
+	SerialController serialController_;
+
+	ThreadController updateThread;
+	void updater();
+	void updateToList(const std::vector<unsigned char> &dataVector);
+
+	CListCtrl listControl_;
+
+	CComboBox comboPort;
+	CComboBox comboBaud;
+
+
+	ThreadController sendThread;
+	void sender();
+
+	virtual void prepareExit();
+public:
+	afx_msg void OnBnClickedButton2();
+	afx_msg void OnBnClickedButton3();
+	afx_msg void OnBnClickedButton4();
 };
