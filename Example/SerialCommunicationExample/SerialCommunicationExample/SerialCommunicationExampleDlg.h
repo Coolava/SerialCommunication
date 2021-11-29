@@ -42,7 +42,8 @@ private:
 	void updater();
 	void updateToList(const std::vector<unsigned char> &dataVector);
 
-	CListCtrl listControl_;
+	CListCtrl listReceived_;
+	CListCtrl listSend_;
 
 	CComboBox comboPort;
 	CComboBox comboBaud;
@@ -56,4 +57,5 @@ public:
 	afx_msg void OnBnClickedButton2();
 	afx_msg void OnBnClickedButton3();
 	afx_msg void OnBnClickedButton4();
+	afx_msg void OnBnClickedButton5();
 };

@@ -29,7 +29,8 @@ CSerialCommunicationExampleDlg::CSerialCommunicationExampleDlg(CWnd* pParent /*=
 void CSerialCommunicationExampleDlg::DoDataExchange(CDataExchange* pDX)
 {
 	NoEscapeDialog::DoDataExchange(pDX);
-	DDX_Control(pDX, IDC_LIST1, listControl_);
+	DDX_Control(pDX, IDC_LIST1, listReceived_);
+	DDX_Control(pDX, IDC_LIST2, listSend_);
 	DDX_Control(pDX, IDC_COMBO1, comboPort);
 	DDX_Control(pDX, IDC_COMBO2, comboBaud);
 }
@@ -41,6 +42,7 @@ BEGIN_MESSAGE_MAP(CSerialCommunicationExampleDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_BUTTON2, &CSerialCommunicationExampleDlg::OnBnClickedButton2)
 	ON_BN_CLICKED(IDC_BUTTON3, &CSerialCommunicationExampleDlg::OnBnClickedButton3)
 	ON_BN_CLICKED(IDC_BUTTON4, &CSerialCommunicationExampleDlg::OnBnClickedButton4)
+	ON_BN_CLICKED(IDC_BUTTON5, &CSerialCommunicationExampleDlg::OnBnClickedButton5)
 END_MESSAGE_MAP()
 
 
@@ -55,21 +57,22 @@ BOOL CSerialCommunicationExampleDlg::OnInitDialog()
 	SetIcon(m_hIcon, TRUE);			// Set big icon
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 
-	listControl_.InsertColumn(0, _T("Index"),0, 100);
-	listControl_.InsertColumn(1, _T("Data(dec)"), 0, 100);
-	listControl_.InsertColumn(2, _T("Data(hex)"),0, 100);
-
 	auto portList = serialController_.getPortList();
 
 	for (auto item : portList)
 	{
 		comboPort.AddString(item.c_str());
 	}
-	comboPort.SetCurSel(1);
+	comboPort.SetCurSel(2);
 
 	comboBaud.AddString(_T("19200"));
 	comboBaud.AddString(_T("115200"));
 	comboBaud.SetCurSel(0);
+
+	listReceived_.SetExtendedStyle(LVS_EX_FULLROWSELECT);
+	listSend_.SetExtendedStyle(LVS_EX_FULLROWSELECT);
+
+	
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
 
@@ -154,23 +157,25 @@ void CSerialCommunicationExampleDlg::updater()
 
 void CSerialCommunicationExampleDlg::updateToList(const std::vector<unsigned char>& dataVector)
 {
-	listControl_.SetRedraw(FALSE);
+	listReceived_.SetRedraw(FALSE);
 
-	listControl_.DeleteAllItems();
-	listControl_.SetItemCount(dataVector.size());
+	auto dataLength = dataVector.size();
+	auto columnCount = static_cast<size_t>(listReceived_.GetHeaderCtrl()->GetItemCount());
 
-	int count = 0;
-	for (auto& item : dataVector)
+	for (auto i = columnCount; i < dataLength; i++)
 	{
-		listControl_.InsertItem(count, std::to_wstring(count).c_str());
-
-		listControl_.SetItemText(count, 1, std::to_wstring(item).c_str());
-		CString str;
-		str.Format(_T("0x%X"), item);
-		listControl_.SetItemText(count, 2, str);
-		count++;
+		listReceived_.InsertColumn(i, std::to_wstring(i).c_str(), 0, 50);
 	}
-	listControl_.SetRedraw(TRUE);
+
+	int itemCount = listReceived_.GetItemCount();
+	listReceived_.InsertItem(itemCount, _T(""));
+	for (auto i = 0; i < dataLength; i++)
+	{
+		CString str;
+		str.Format(_T("0x%X"), dataVector[i]);
+		listReceived_.SetItemText(itemCount, i, str);
+	}
+	listReceived_.SetRedraw(TRUE);
 }
 
 
@@ -215,4 +220,10 @@ void CSerialCommunicationExampleDlg::OnBnClickedButton3()
 void CSerialCommunicationExampleDlg::OnBnClickedButton4()
 {
 	sendThread.stop();
+}
+
+
+void CSerialCommunicationExampleDlg::OnBnClickedButton5()
+{
+	listReceived_.DeleteAllItems();
 }
