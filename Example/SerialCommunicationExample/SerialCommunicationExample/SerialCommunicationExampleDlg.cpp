@@ -11,6 +11,10 @@
 #include <vector>
 #include <array>
 #include <string>
+#include <sstream>
+#include <timeapi.h>
+
+#pragma comment(lib,"Winmm.lib")
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -24,6 +28,12 @@ CSerialCommunicationExampleDlg::CSerialCommunicationExampleDlg(CWnd* pParent /*=
 	: NoEscapeDialog(IDD_SERIALCOMMUNICATIONEXAMPLE_DIALOG, pParent)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
+	timeBeginPeriod(1);
+}
+
+CSerialCommunicationExampleDlg::~CSerialCommunicationExampleDlg()
+{
+	timeEndPeriod(1);
 }
 
 void CSerialCommunicationExampleDlg::DoDataExchange(CDataExchange* pDX)
@@ -39,10 +49,11 @@ BEGIN_MESSAGE_MAP(CSerialCommunicationExampleDlg, CDialogEx)
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
 	ON_BN_CLICKED(IDC_BUTTON1, &CSerialCommunicationExampleDlg::OnBnClickedButton1)
-	ON_BN_CLICKED(IDC_BUTTON2, &CSerialCommunicationExampleDlg::OnBnClickedButton2)
-	ON_BN_CLICKED(IDC_BUTTON3, &CSerialCommunicationExampleDlg::OnBnClickedButton3)
-	ON_BN_CLICKED(IDC_BUTTON4, &CSerialCommunicationExampleDlg::OnBnClickedButton4)
 	ON_BN_CLICKED(IDC_BUTTON5, &CSerialCommunicationExampleDlg::OnBnClickedButton5)
+	ON_BN_CLICKED(IDC_BUTTON6, &CSerialCommunicationExampleDlg::OnBnClickedButton6)
+	ON_BN_CLICKED(IDC_BUTTON_CONFIG, &CSerialCommunicationExampleDlg::OnBnClickedButtonConfig)
+	ON_NOTIFY(NM_SETFOCUS, IDC_LIST1, &CSerialCommunicationExampleDlg::OnNMSetfocusList1)
+	ON_NOTIFY(NM_KILLFOCUS, IDC_LIST1, &CSerialCommunicationExampleDlg::OnNMKillfocusList1)
 END_MESSAGE_MAP()
 
 
@@ -67,11 +78,12 @@ BOOL CSerialCommunicationExampleDlg::OnInitDialog()
 
 	comboBaud.AddString(_T("19200"));
 	comboBaud.AddString(_T("115200"));
-	comboBaud.SetCurSel(0);
+	comboBaud.SetCurSel(1);
 
 	listReceived_.SetExtendedStyle(LVS_EX_FULLROWSELECT);
 	listSend_.SetExtendedStyle(LVS_EX_FULLROWSELECT);
 
+	listReceived_.InsertColumn(0, _T("Time"), 0, 50);
 	
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
@@ -116,23 +128,35 @@ HCURSOR CSerialCommunicationExampleDlg::OnQueryDragIcon()
 
 void CSerialCommunicationExampleDlg::OnBnClickedButton1()
 {
-	CString strPort, strBaud;
-	comboPort.GetWindowText(strPort);
-	comboBaud.GetWindowText(strBaud);
 
-	long  baud = _tcstol(strBaud.GetBuffer(), nullptr, 10);
-
-
-	bool rslt = serialController_.open(strPort.GetBuffer(), baud);
-
-	if (rslt == false)
+	if (serialController_.isOpened() == true)
 	{
-		AfxMessageBox(_T("Open Fail"));
+		updateThread.stop();
+		serialController_.close();
+		GetDlgItem(IDC_BUTTON1)->SetWindowText(_T("Connect"));
 	}
-	
-	updateThread.setInterval(100);
-	updateThread.start(std::bind(&CSerialCommunicationExampleDlg::updater, this));
+	else
+	{
 
+		CString strPort, strBaud;
+		comboPort.GetWindowText(strPort);
+		comboBaud.GetWindowText(strBaud);
+
+		long  baud = _tcstol(strBaud.GetBuffer(), nullptr, 10);
+
+
+		bool rslt = serialController_.open(strPort.GetBuffer(), baud);
+
+		if (rslt == false)
+		{
+			AfxMessageBox(_T("Open Fail"));
+		}
+
+		updateThread.setInterval(100);
+		updateThread.start(std::bind(&CSerialCommunicationExampleDlg::updater, this));
+
+		GetDlgItem(IDC_BUTTON1)->SetWindowText(_T("Disconnect"));
+	}
 }
 
 void CSerialCommunicationExampleDlg::updater()
@@ -144,7 +168,7 @@ void CSerialCommunicationExampleDlg::updater()
 	{
 		auto& dataQueue = serialController_.getDataQueue();
 
-		if (dataQueue.size() > 0)
+		while (dataQueue.size() > 0)
 		{
 			auto dataVector = dataQueue.dequeue();
 
@@ -155,27 +179,33 @@ void CSerialCommunicationExampleDlg::updater()
 
 }
 
-void CSerialCommunicationExampleDlg::updateToList(const std::vector<unsigned char>& dataVector)
+
+void CSerialCommunicationExampleDlg::updateToList(const CSerialPort::Buffer& data)
 {
 	listReceived_.SetRedraw(FALSE);
 
-	auto dataLength = dataVector.size();
+	auto dataLength = data.data.size();
 	auto columnCount = static_cast<size_t>(listReceived_.GetHeaderCtrl()->GetItemCount());
 
-	for (auto i = columnCount; i < dataLength; i++)
+	for (auto i = columnCount-1; i < dataLength; i++)
 	{
-		listReceived_.InsertColumn(i, std::to_wstring(i).c_str(), 0, 50);
+		listReceived_.InsertColumn(i+1, std::to_wstring(i).c_str(), 0, 50);
 	}
 
 	int itemCount = listReceived_.GetItemCount();
-	listReceived_.InsertItem(itemCount, _T(""));
+
+	listReceived_.InsertItem(itemCount, CString(data.timeStamp.c_str()));
 	for (auto i = 0; i < dataLength; i++)
 	{
 		CString str;
-		str.Format(_T("0x%X"), dataVector[i]);
-		listReceived_.SetItemText(itemCount, i, str);
+		str.Format(_T("0x%X"), data.data[i]);
+		listReceived_.SetItemText(itemCount, i + 1, str);
 	}
+
 	listReceived_.SetRedraw(TRUE);
+
+	if(scroll_ == true)
+		listReceived_.EnsureVisible(listReceived_.GetItemCount() - 1, FALSE);
 }
 
 
@@ -203,27 +233,36 @@ void CSerialCommunicationExampleDlg::prepareExit()
 	sendThread.stop();
 }
 
-void CSerialCommunicationExampleDlg::OnBnClickedButton2()
-{
-	serialController_.close();
-	updateThread.stop();
-}
-
-
-void CSerialCommunicationExampleDlg::OnBnClickedButton3()
-{
-	sendThread.setInterval(100);
-	sendThread.start(std::bind(&CSerialCommunicationExampleDlg::sender, this));
-}
-
-
-void CSerialCommunicationExampleDlg::OnBnClickedButton4()
-{
-	sendThread.stop();
-}
-
 
 void CSerialCommunicationExampleDlg::OnBnClickedButton5()
 {
 	listReceived_.DeleteAllItems();
+}
+
+
+void CSerialCommunicationExampleDlg::OnBnClickedButton6()
+{
+	listSend_.DeleteAllItems();
+}
+
+
+void CSerialCommunicationExampleDlg::OnBnClickedButtonConfig()
+{
+	// TODO: Add your control notification handler code here
+}
+
+
+void CSerialCommunicationExampleDlg::OnNMSetfocusList1(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	// TODO: Add your control notification handler code here
+	scroll_ = false;
+	*pResult = 0;
+}
+
+
+void CSerialCommunicationExampleDlg::OnNMKillfocusList1(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	// TODO: Add your control notification handler code here
+	scroll_ = true;
+	*pResult = 0;
 }

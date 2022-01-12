@@ -29,7 +29,9 @@
 
 #include <string>
 #include "SafeQueue.h"
-
+#include <chrono>
+#include <sstream>
+#include <iomanip>
 class CSerialPort
 {														 
 public:
@@ -63,6 +65,10 @@ public:
 	HWND m_hWnd_ToSend;
 	
 
+	struct Buffer {
+		std::string timeStamp;
+		std::vector<BYTE> data;
+	};
 protected:
 	// protected memberfunctions
 	void		ProcessErrorMessage(char* ErrorText);
@@ -100,7 +106,7 @@ protected:
 	// misc
 	UINT		m_nPortNr;
 
-	SafeQueue<std::vector<BYTE>> dataQueue;
+	SafeQueue<Buffer> dataQueue;
 
 public: char		m_szWriteBuffer[4096];
 	DWORD		m_dwCommEvents;

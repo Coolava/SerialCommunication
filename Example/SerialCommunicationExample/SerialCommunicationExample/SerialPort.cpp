@@ -191,9 +191,9 @@ BOOL CSerialPort::RestartMonitoring()
 // Suspend the comm thread
 BOOL CSerialPort::StopMonitoring()
 {
-	TRACE("Thread suspended\n");
+	//TRACE("Thread suspended\n");
 	//m_Thread->SuspendThread(); 
-	m_ThreadRecv->SuspendThread();
+	//m_ThreadRecv->SuspendThread();
 	return TRUE;	
 }
 
@@ -329,6 +329,28 @@ void CSerialPort::WriteChar(CSerialPort* port)
 
 }
 
+std::string TimepointToString(const std::chrono::system_clock::time_point& time)
+{
+	using namespace std::chrono;
+	// get number of milliseconds for the current second
+	// (remainder after division into seconds)
+	auto us = duration_cast<microseconds>(time.time_since_epoch()) % 1000000;
+
+	// convert to std::time_t in order to convert to std::tm (broken time)
+	auto timer = system_clock::to_time_t(time);
+
+	// convert to broken time
+	std::tm bt;
+
+	localtime_s(&bt, &timer);
+
+	std::ostringstream oss;
+	oss << std::put_time(&bt, "%T"); // HH:MM:SS
+	oss << ',' << std::setfill('0') << std::setw(6) << us.count() << " ";
+
+	return oss.str();
+}
+
 
 //스레드용 Receivechar
 UINT CSerialPort::ReceiveChar(LPVOID pParam)
@@ -388,7 +410,7 @@ UINT CSerialPort::ReceiveChar(LPVOID pParam)
 
 					bResult = ReadFile(port->m_hComm, // Handle to COMM port 
 									   RXBuff,	      // RX Buffer Pointer
-									   256,             // Read one byte(1:한개씩, 2:두개마다 한개씩)
+									   1024,             // Read one byte(1:한개씩, 2:두개마다 한개씩)
 									   &BytesRead,    // Stores number of bytes read
 									   &port->m_ov);  // pointer to the m_ov structure
 					//deal with the error code
@@ -434,7 +456,11 @@ UINT CSerialPort::ReceiveChar(LPVOID pParam)
 
 				if(BytesRead > 0)
 				{
-					port->dataQueue.enqueue(std::vector<BYTE>(&RXBuff[0], &RXBuff[0] + BytesRead));
+					std::string timeStamp = TimepointToString(std::chrono::system_clock::now());
+					Buffer buffer{
+						timeStamp, std::vector<BYTE>(&RXBuff[0], &RXBuff[0] + BytesRead)
+					};
+					port->dataQueue.enqueue(buffer);
 
 					BytesRead = 0;
 				}
